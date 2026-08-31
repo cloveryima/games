@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pīnyīn &amp; Tone Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EDE4;
+    --paper-deep:#E8E1D3;
+    --ink:#22201C;
+    --ink-soft:#55504A;
+    --tone1:#3B6E8F;
+    --tone2:#4F8F5B;
+    --tone3:#C98A3B;
+    --tone4:#B33A3A;
+    --card-w: 128px;
+    --card-h: 128px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(34,32,28,0.035) 0, transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(34,32,28,0.035) 0, transparent 40%);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:40px 20px 60px;
+  }
+
+  header{
+    text-align:center;
+    max-width:520px;
+    margin-bottom:28px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:2.6rem;
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+  }
+  h1 .zh{ color: var(--tone2); }
+  header p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:1.02rem;
+    line-height:1.5;
+  }
+
+  .legend{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin:22px 0 6px;
+  }
+  .legend-chip{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background:var(--paper-deep);
+    border:1px solid rgba(34,32,28,0.1);
+    border-radius:999px;
+    padding:6px 14px 6px 10px;
+    font-size:0.86rem;
+    color:var(--ink-soft);
+  }
+  .legend-mark{
+    width:22px; height:22px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:white;
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:0.95rem;
+  }
+
+  .panel{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin:20px 0 30px;
+  }
+  .diff-group{
+    display:flex;
+    gap:6px;
+    background:var(--paper-deep);
+    padding:4px;
+    border-radius:12px;
+  }
+  .diff-btn{
+    border:none;
+    background:transparent;
+    color:var(--ink-soft);
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:0.88rem;
+    padding:8px 14px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .diff-btn.active{
+    background:var(--ink);
+    color:var(--paper);
+  }
+
+  .stats{
+    display:flex;
+    gap:18px;
+    font-size:0.92rem;
+    color:var(--ink-soft);
+  }
+  .stats b{ color:var(--ink); font-weight:700; }
+
+  .new-game{
+    border:1.5px solid var(--ink);
+    background:transparent;
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:0.88rem;
+    padding:8px 16px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .new-game:hover{ background:var(--ink); color:var(--paper); }
+
+  #board{
+    display:grid;
+    gap:14px;
+    justify-content:center;
+    perspective:1000px;
+  }
+
+  .card{
+    width:var(--card-w);
+    height:var(--card-h);
+    cursor:pointer;
+    position:relative;
+  }
+  .card-inner{
+    width:100%; height:100%;
+    position:relative;
+    transform-style:preserve-3d;
+    transition:transform 0.45s cubic-bezier(.4,.2,.2,1);
+  }
+  .card.flipped .card-inner{ transform:rotateY(180deg); }
+  .card.matched .card-inner{ transform:rotateY(180deg); }
+
+  .face{
+    position:absolute; inset:0;
+    backface-visibility:hidden;
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:10px;
+    text-align:center;
+  }
+  .face-cover{
+    background:var(--paper-deep);
+    border:1.5px solid rgba(34,32,28,0.12);
+  }
+  .face-cover::after{
+    content:"印";
+    font-family:'Fraunces', serif;
+    font-size:2.6rem;
+    color:rgba(34,32,28,0.08);
+  }
+  .face-content{
+    transform:rotateY(180deg);
+    background:var(--paper);
+    border:2px solid var(--tone-color, var(--ink));
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.4);
+  }
+
+  .pinyin-text{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:1.7rem;
+    color:var(--tone-color);
+  }
+
+  .meaning-mark{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:1.15rem;
+    color:var(--tone-color);
+    margin-bottom:4px;
+  }
+  .meaning-text{
+    font-size:0.92rem;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .meaning-word{
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    opacity:0.7;
+    margin-top:3px;
+  }
+
+  .card.matched .face-content{
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.4), 0 0 0 4px rgba(79,143,91,0.18);
+  }
+
+  #banner{
+    margin-top:26px;
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-size:1.3rem;
+    color:var(--tone2);
+    opacity:0;
+    transform:translateY(6px);
+    transition:opacity 0.4s ease, transform 0.4s ease;
+  }
+  #banner.show{ opacity:1; transform:translateY(0); }
+  #banner span{ display:block; font-family:'Inter',sans-serif; font-size:0.9rem; color:var(--ink-soft); font-weight:500; margin-top:4px; }
+
+  @media (max-width:520px){
+    :root{ --card-w:76px; --card-h:96px; }
+    h1{ font-size:2rem; }
+    .pinyin-text{ font-size:1.25rem; }
+    .meaning-text{ font-size:0.78rem; }
+    .face-cover::after{ font-size:1.8rem; }
+  }
+
+  .card-inner:focus-visible{
+    outline:3px solid var(--ink);
+    outline-offset:3px;
+    border-radius:14px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card-inner{ transition:none; }
+    #banner{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pīnyīn <span class="zh">&amp; Tone</span> Match</h1>
+  <p>Flip two cards to pair each syllable with its tone and meaning. The four tones each get their own color — watch how one sound changes meaning completely.</p>
+</header>
+
+<div class="legend" id="legend"></div>
+
+<div class="panel">
+  <div class="diff-group" id="diffGroup">
+    <button class="diff-btn" data-diff="easy">Easy</button>
+    <button class="diff-btn" data-diff="medium">Medium</button>
+    <button class="diff-btn" data-diff="hard">Hard</button>
+  </div>
+  <div class="stats">
+    <span>Score: <b id="score">0</b></span>
+    <span>Moves: <b id="moves">0</b></span>
+  </div>
+  <button class="new-game" id="newGameBtn">New game</button>
+</div>
+
+<div id="board"></div>
+<div id="banner"></div>
+
+<script>
+const TONE_COLORS = {1:'var(--tone1)',2:'var(--tone2)',3:'var(--tone3)',4:'var(--tone4)'};
+const TONE_MARKS = {1:'ˉ',2:'ˊ',3:'ˇ',4:'ˋ'};
+const TONE_NAMES = {1:'1st tone · flat',2:'2nd tone · rising',3:'3rd tone · dipping',4:'4th tone · falling'};
+
+const WORDS = [
+  {syllable:'mā', tone:1, meaning:'mother'},
+  {syllable:'má', tone:2, meaning:'hemp'},
+  {syllable:'mǎ', tone:3, meaning:'horse'},
+  {syllable:'mà', tone:4, meaning:'to scold'},
+  {syllable:'tāng', tone:1, meaning:'soup'},
+  {syllable:'táng', tone:2, meaning:'sugar'},
+  {syllable:'tǎng', tone:3, meaning:'to lie down'},
+  {syllable:'tàng', tone:4, meaning:'scalding hot'},
+  {syllable:'bāo', tone:1, meaning:'bag'},
+  {syllable:'báo', tone:2, meaning:'thin'},
+  {syllable:'bǎo', tone:3, meaning:'full (eaten)'},
+  {syllable:'bào', tone:4, meaning:'newspaper'},
+];
+
+const DIFFICULTY = {
+  easy:   {label:'Easy',   indices:[0,1,2,3,4,11], cols:4},
+  medium: {label:'Medium', indices:[0,1,2,3,4,5,6,7], cols:4},
+  hard:   {label:'Hard',   indices:[0,1,2,3,4,5,6,7,8,9,10,11], cols:6},
+};
+
+let state = {
+  diff:'easy',
+  deck:[],
+  flipped:[],
+  matchedCount:0,
+  score:0,
+  moves:0,
+  locked:false,
+};
+
+const boardEl = document.getElementById('board');
+const scoreEl = document.getElementById('score');
+const movesEl = document.getElementById('moves');
+const bannerEl = document.getElementById('banner');
+const legendEl = document.getElementById('legend');
+const diffGroup = document.getElementById('diffGroup');
+
+function buildLegend(){
+  legendEl.innerHTML = '';
+  [1,2,3,4].forEach(t=>{
+    const chip = document.createElement('div');
+    chip.className = 'legend-chip';
+    chip.innerHTML = `<span class="legend-mark" style="background:${TONE_COLORS[t]}">${TONE_MARKS[t]}</span>${TONE_NAMES[t]}`;
+    legendEl.appendChild(chip);
+  });
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function buildDeck(diffKey){
+  const cfg = DIFFICULTY[diffKey];
+  const words = cfg.indices.map(i=>WORDS[i]);
+  let cards = [];
+  words.forEach((w,i)=>{
+    cards.push({id:'p'+i, pairId:i, type:'pinyin', ...w});
+    cards.push({id:'m'+i, pairId:i, type:'meaning', ...w});
+  });
+  return shuffle(cards);
+}
+
+function renderBoard(){
+  const cfg = DIFFICULTY[state.diff];
+  boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, var(--card-w))`;
+  boardEl.innerHTML = '';
+  state.deck.forEach(card=>{
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card';
+    cardEl.dataset.id = card.id;
+
+    const inner = document.createElement('div');
+    inner.className = 'card-inner';
+    inner.tabIndex = 0;
+    inner.setAttribute('role','button');
+    inner.setAttribute('aria-label', card.type==='pinyin' ? 'Pinyin card, hidden' : 'Meaning card, hidden');
+
+    const cover = document.createElement('div');
+    cover.className = 'face face-cover';
+
+    const content = document.createElement('div');
+    content.className = 'face face-content';
+    content.style.setProperty('--tone-color', TONE_COLORS[card.tone]);
+
+    if(card.type==='pinyin'){
+      content.innerHTML = `<div class="pinyin-text">${card.syllable}</div>`;
+    } else {
+      content.innerHTML = `<div class="meaning-mark">${TONE_MARKS[card.tone]} ${TONE_NAMES[card.tone].split(' · ')[0]}</div>
+        <div class="meaning-text">${card.meaning}</div>`;
+    }
+
+    inner.appendChild(cover);
+    inner.appendChild(content);
+    cardEl.appendChild(inner);
+    boardEl.appendChild(cardEl);
+
+    cardEl.addEventListener('click', ()=>handleFlip(cardEl, card));
+    inner.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); handleFlip(cardEl, card); }
+    });
+  });
+}
+
+function handleFlip(cardEl, card){
+  if(state.locked) return;
+  if(cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+  if(state.flipped.length===2) return;
+
+  cardEl.classList.add('flipped');
+  state.flipped.push({cardEl, card});
+
+  if(state.flipped.length===2){
+    state.moves++;
+    movesEl.textContent = state.moves;
+    checkMatch();
+  }
+}
+
+function checkMatch(){
+  state.locked = true;
+  const [a,b] = state.flipped;
+  const isMatch = a.card.pairId === b.card.pairId && a.card.type !== b.card.type;
+
+  setTimeout(()=>{
+    if(isMatch){
+      a.cardEl.classList.add('matched');
+      b.cardEl.classList.add('matched');
+      state.score += 10;
+      scoreEl.textContent = state.score;
+      state.matchedCount++;
+      checkWin();
+    } else {
+      a.cardEl.classList.remove('flipped');
+      b.cardEl.classList.remove('flipped');
+    }
+    state.flipped = [];
+    state.locked = false;
+  }, isMatch ? 350 : 750);
+}
+
+function checkWin(){
+  const total = DIFFICULTY[state.diff].indices.length;
+  if(state.matchedCount === total){
+    bannerEl.innerHTML = `Nice work — all matched!<span>${state.moves} moves · score ${state.score}</span>`;
+    bannerEl.classList.add('show');
+  }
+}
+
+function startGame(diffKey){
+  state.diff = diffKey;
+  state.deck = buildDeck(diffKey);
+  state.flipped = [];
+  state.matchedCount = 0;
+  state.score = 0;
+  state.moves = 0;
+  state.locked = false;
+  scoreEl.textContent = 0;
+  movesEl.textContent = 0;
+  bannerEl.classList.remove('show');
+  bannerEl.innerHTML = '';
+
+  [...diffGroup.children].forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.diff===diffKey);
+  });
+
+  renderBoard();
+}
+
+diffGroup.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.diff-btn');
+  if(!btn) return;
+  startGame(btn.dataset.diff);
+});
+
+document.getElementById('newGameBtn').addEventListener('click', ()=>{
+  startGame(state.diff);
+});
+
+buildLegend();
+startGame('easy');
+</script>
+
+</body>
+</html>
